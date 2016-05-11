@@ -1,0 +1,3 @@
+[submodule "LAP-Stack-Docker"]
+	path = LAP-Stack-Docker
+	url = https://github.com/OpenSourceCartel/LAP-Stack-Docker.git
