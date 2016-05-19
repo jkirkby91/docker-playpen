@@ -3,6 +3,20 @@ Vagrant.configure("2") do |config|
     # Global provisioning command copy your ssh key into all vms
     config.vm.provision "file", source: "~/.ssh", destination: "/tmp"
 
+    config.ssh.pty = true
+
+    config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
+
+    # Setup Docker Host
+    config.vm.define :dh do |dockerhost|
+        
+        dockerhost.vm.provider "docker" do |d|
+            d.vagrant_vagrantfile = "dockerhost/Vagrantfile"
+            d.build_dir = "sonytest/pitchbase"
+            d.has_ssh = true
+        end
+    end
+
     # Setup loadbalancer/reverse proxy for containers
     config.vm.define :lb do |loadbalancer|
         loadbalancer.vm.define "loadbalancer"
@@ -26,49 +40,6 @@ Vagrant.configure("2") do |config|
         loadbalancer.vm.provision "shell", inline: <<-SHELL
             sudo apt-get update
             sudo apt-get install -y linux-image-extra-$(uname -r) apt-transport-https ca-certificates build-essential nginx htop --fix-missing
-            cp -Rf /tmp/.ssh/ /root/
-        SHELL
-    end
-
-    # Setup our docker host
-    config.vm.define :ds do |docker_srv|
-
-        docker_srv.vm.provision "docker"
-        docker_srv.vm.define "dockerhost"
-        docker_srv.vm.hostname = "dockerhost"
-        docker_srv.vm.box = "ubuntu/trusty64"
-        docker_srv.vm.box_check_update = true
-        docker_srv.vm.network "public_network", bridge: "eth0"
-        docker_srv.vm.network "private_network", ip: "192.168.33.20"
-        docker_srv.vm.synced_folder "~/Sites", "/sites"
-        docker_srv.vm.post_up_message = "Welcome to Docker PlayPen"
-        docker_srv.vm.network "forwarded_port", guest: 8080, host: 7666
-
-        # Configure VBox settings
-        docker_srv.vm.provider :virtualbox do |vb|
-            vb.name = "dockerhost"
-            vb.gui = false
-            vb.memory = 2576
-            vb.cpus = 2
-            vb.customize ["modifyvm", :id, "--cpuexecutioncap", "75"]
-        end
-
-        # Provision our docker containers
-        docker_srv.vm.define "ubuntuSrvBase" do |a|
-            a.vm.provider "docker" do |d|
-                d.vagrant_machine = "dockerhost"
-                d.vagrant_vagrantfile = "./LAP-Stack-Docker/Dockerfile"
-                d.build_dir = "./LAP-Stack-Docker/Dockerfile"
-                d.ports = ["9890:80"]
-                d.name = "web-01"
-                d.remains_running = true
-                d.cmd = ["/bin/bash start.sh"]
-                d.volumes = ["~/Sites:/Sites"]
-            end
-        end
-
-        # Run some provisions on the vm
-        docker_srv.vm.provision "shell", inline: <<-SHELL
             cp -Rf /tmp/.ssh/ /root/
         SHELL
     end
@@ -102,4 +73,5 @@ Vagrant.configure("2") do |config|
             cp -Rf /tmp/.ssh/ /root/
         SHELL
     end
+
 end
