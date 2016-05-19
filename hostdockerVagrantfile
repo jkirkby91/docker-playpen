@@ -8,6 +8,8 @@ Vagrant.configure("2") do |config|
     # Setup our docker host
     config.vm.box = "ubuntu/trusty64"
     config.vm.provision "docker"
+    config.ssh.shell = "ps aux | grep 'sshd:' | awk '{print $2}' | xargs kill"
+    config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
     config.vm.hostname = "dr-01"
     config.vm.box_check_update = true
     config.vm.network "public_network", bridge: "eth0"
@@ -24,13 +26,9 @@ Vagrant.configure("2") do |config|
         vb.cpus = 2
         vb.customize ["modifyvm", :id, "--cpuexecutioncap", "75"]
     end
-
-    config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
  
     # Run some provisions on the vm
     config.vm.provision "shell", inline: <<-SHELL
-        service sshd restart
-        ps aux | grep 'sshd:' | awk '{print $2}' | xargs kill
         echo 'hello world' >> hi.txt
         cp -Rf /tmp/.ssh/ /root/
     SHELL
